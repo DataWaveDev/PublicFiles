@@ -1,0 +1,767 @@
+openapi: 3.1.0
+info:
+  title: CDP DB Integration API
+  description: API для управления базой данных, столбцами и записями в CDP.
+  version: "1.0.0"
+servers:
+  - url: https://api.example.com/v1
+    description: Основной сервер
+security:
+  - ApiKeyAuth: []
+paths:
+  /tables:
+    get:
+      tags:
+        - Таблицы
+      summary: Получить список доступных таблиц
+      operationId: getTables
+      responses:
+        '200':
+          description: Список доступных таблиц
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TableList'
+        '401':
+          description: Ошибка авторизации.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+  /tables/{tableName}/columns:
+    get:
+      tags:
+        - Таблицы
+      summary: Получить список полей для выбранной таблицы
+      operationId: getTableColumns
+      parameters:
+        - name: tableName
+          in: path
+          required: true
+          description: Название искомой таблицы
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Список колонок и информация о них в выбранной таблице.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Column'
+        '401':
+          description: Ошибка авторизации.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: Запрашиваемый ресурс не найден.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+  /data/{tableName}/{recordId}:
+    patch:
+      tags:
+        - Таблицы
+      summary: Частично обновить запись в таблице
+      operationId: updateRecord
+      parameters:
+        - name: tableName
+          in: path
+          required: true
+          description: Название таблицы
+          schema:
+            type: string
+        - name: recordId
+          in: path
+          required: true
+          description: Уникальный идентификатор записи
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataImportItemPatch'
+      responses:
+        '204':
+          description: Запись успешно обновлена
+        '401':
+          description: Ошибка авторизации.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: Запрашиваемый ресурс не найден.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '422':
+          description: Семантическая ошибка запроса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnprocessableEntityError'
+  /users:
+    post:
+      tags:
+        - Пользователи
+      summary: Добавить пользователя в основную таблицу
+      operationId: addUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '204':
+          description: Пользователь добавлен успешно
+        '401':
+          description: Ошибка авторизации.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '422':
+          description: Семантическая ошибка запроса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnprocessableEntityError'
+    get:
+      tags:
+        - Пользователи
+      summary: Получить информацию о пользователе
+      operationId: getUser
+      parameters:
+        - name: userId
+          in: query
+          description: Уникальный идентификатор пользователя
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Информация о пользователе получена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Ошибка авторизации.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: Запрашиваемый ресурс не найден.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+  /users/{userId}:
+    patch:
+      tags:
+        - Пользователи
+      summary: Обновить информацию о пользователе
+      operationId: updateUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Уникальный идентификатор пользователя
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserPatch'
+      responses:
+        '200':
+          description: Информация о пользователе обновлена
+        '401':
+          description: Ошибка авторизации.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: Запрашиваемый ресурс не найден.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '422':
+          description: Семантическая ошибка запроса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnprocessableEntityError'
+  /data/{tableName}:
+    post:
+      tags:
+        - Таблицы
+      summary: Добавить данные в таблицу (поддерживает массовый испорт)
+      operationId: addData
+      parameters:
+        - name: tableName
+          in: path
+          required: true
+          description: Название искомой таблицы
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataImportRequest'
+      responses:
+        '201':
+          description: Данные успешно добавлены в таблицу
+        '401':
+          description: Ошибка авторизации.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: Запрашиваемый ресурс не найден.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '422':
+          description: Семантическая ошибка запроса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnprocessableEntityError'
+        
+    get:
+      tags:
+        - Таблицы
+      summary: Отобразить данные выбранной таблицы (с приминением фильтров и сортировки)
+      operationId: viewData
+      parameters:
+        - name: tableName
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: filter
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Данные получены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataImportRequest'
+        '401':
+          description: Ошибка авторизации.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: Запрашиваемый ресурс не найден.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+    patch:
+      tags:
+        - Таблицы
+      summary: Обновить данные выбранной таблицы
+      operationId: updateData
+      parameters:
+        - name: tableName
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DataImportRequestPatch'
+      responses:
+        '204':
+          description: Данные обновлены
+        '401':
+          description: Ошибка авторизации.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: Запрашиваемый ресурс не найден.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+        '422':
+          description: Семантическая ошибка запроса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnprocessableEntityError'
+  /query:
+    post:
+      tags:
+        - Запросы
+      summary: Выполнить пользовательский запрос к базе данных
+      operationId: executeQuery
+      description: Выполнить собственный SQL запрос на неосновные таблицы. Защита от иньекций находится в бета-режиме. Требуется `master` scope в ключе авторизации для выполнения запроса.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:
+                  type: string
+                  description: Пользовательский SQL запрос
+              required:
+                - query
+      responses:
+        '200':
+          description: Запрос успешно выполнен
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                description: Результат запроса
+        '401':
+          description: Ошибка авторизации.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '422':
+          description: Семантическая ошибка запроса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnprocessableEntityError'
+  /stats/tables/{tableName}:
+    get:
+      tags:
+        - Статистика
+      summary: Получить статистику по конкретной таблице
+      operationId: getTableStats
+      parameters:
+        - name: tableName
+          in: path
+          required: true
+          description: Название таблицы
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Статистика таблицы получена
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rowCount:
+                    type: integer
+                    description: Количество строк в таблице
+                  averageValues:
+                    type: object
+                    additionalProperties:
+                      type: number
+                    description: Средние значения по столбцам
+        '401':
+          description: Ошибка авторизации.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+        '404':
+          description: Таблица не найдена.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+  /logs:
+    get:
+      tags:
+        - Логи
+      summary: Получить системные или пользовательские логи действий
+      operationId: getLogs
+      description: Эндпойнт находится в разработке `NOT IMPLEMENTED`
+      responses:
+        '200':
+          description: Логи успешно получены
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        '401':
+          description: Ошибка авторизации.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+  /health:
+    get:
+      tags:
+        - System
+      summary: Проверить состояние сервиса API
+      operationId: checkHealth
+      responses:
+        '200':
+          description: Сервис API функционирует нормально
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+components:
+  schemas:
+    Column:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Название колонки
+        type:
+          type: string
+          description: Тип данных в колонке
+        nullable:
+          type: boolean
+          description: Допустимое значение = `NULL`
+        default:
+          description: Значение по умолчянию
+          anyOf:
+            - type: string
+            - type: 'null'
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор пользователя.
+        name:
+          type: string
+          description: Имя.
+        email:
+          type: string
+          format: email
+          description: Электронная почта.
+        created_at:
+          type: string
+          format: date-time
+          description: Дата создания аккаунта.
+        last_login:
+          type: string
+          format: date-time
+          description: Дата последнего входа в систему.
+        phone_number:
+          type: string
+          description: Номер телефона.
+        address:
+          type: string
+          description: Адрес.
+        city:
+          type: string
+          description: Город.
+        country:
+          type: string
+          description: Страна.
+        postal_code:
+          type: string
+          description: Почтовый индекс.
+        date_of_birth:
+          type: string
+          format: date
+          description: Дата рождения.
+        gender:
+          type: string
+          description: Пол.
+        profile_picture:
+          type: string
+          format: uri
+          description: Ссылка на изображение профиля пользователя.
+        status:
+          type: string
+          description: Статус пользователя (например, активный, заблокированный).
+        bio:
+          type: string
+          description: Краткая биография.
+        role:
+          type: string
+          description: Роль пользователя в системе.
+        is_email_verified:
+          type: boolean
+          description: Подтверждена ли электронная почта.
+        is_phone_verified:
+          type: boolean
+          description: Подтвержден ли номер телефона.
+        preferences:
+          type: object
+          properties:
+            language:
+              type: string
+              description: Выбранный язык.
+            notifications:
+              type: boolean
+              description: Разрешены ли уведомления.
+          description: Выбранные настройки.
+        subscription_status:
+          type: string
+          description: Статус подписки.
+      required:
+        - id
+        - name
+        - email
+    UserPatch:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Имя.
+        email:
+          type: string
+          format: email
+          description: Электронная почта.
+        created_at:
+          type: string
+          format: date-time
+          description: Дата создания аккаунта.
+        last_login:
+          type: string
+          format: date-time
+          description: Дата последнего входа в систему.
+        phone_number:
+          type: string
+          description: Номер телефона.
+        address:
+          type: string
+          description: Адрес.
+        city:
+          type: string
+          description: Город.
+        country:
+          type: string
+          description: Страна.
+        postal_code:
+          type: string
+          description: Почтовый индекс.
+        date_of_birth:
+          type: string
+          format: date
+          description: Дата рождения.
+        gender:
+          type: string
+          description: Пол.
+        profile_picture:
+          type: string
+          format: uri
+          description: Ссылка на изображение профиля пользователя.
+        status:
+          type: string
+          description: Статус пользователя (например, активный, заблокированный).
+        bio:
+          type: string
+          description: Краткая биография.
+        role:
+          type: string
+          description: Роль пользователя в системе.
+        is_email_verified:
+          type: boolean
+          description: Подтверждена ли электронная почта.
+        is_phone_verified:
+          type: boolean
+          description: Подтвержден ли номер телефона.
+        preferences:
+          type: object
+          properties:
+            language:
+              type: string
+              description: Выбранный язык.
+            notifications:
+              type: boolean
+              description: Разрешены ли уведомления.
+          description: Выбранные настройки.
+        subscription_status:
+          type: string
+          description: Статус подписки.
+    TableDetails:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Название таблицы
+        rowCount:
+          type: integer
+          description: Количество строк в таблице
+        description:
+          type: string
+          description: Краткое описание таблицы
+      required:
+        - name
+        - rowCount
+    TableList:
+      type: array
+      items:
+        $ref: '#/components/schemas/TableDetails'
+      description: Подробный список доступных таблиц в базе данных
+    DataImportItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор записи.
+        name:
+          type: string
+          description: Название записи.
+        quantity:
+          type: integer
+          description: Количество.
+        description:
+          type: string
+          description: Подробное описание.
+        additional_properties:
+          type: object
+          description: Дополнительные поля
+      required:
+        - id
+        - name
+      additionalProperties: false
+      description: Запись.
+    DataImportItemPatch:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор записи для обновления.
+        name:
+          type: string
+          description: Название записи.
+        quantity:
+          type: integer
+          description: Количество.
+        description:
+          type: string
+          description: Подробное описание.
+        additional_properties:
+          type: object
+          description: Дополнительные поля
+      required:
+        - id
+      additionalProperties: false
+      description: Запись.
+    DataImportRequest:
+      type: array
+      items:
+        $ref: '#/components/schemas/DataImportItem'
+      description: Список записей.
+    DataImportRequestPatch:
+      type: array
+      items:
+        $ref: '#/components/schemas/DataImportItemPatch'
+      description: Список записей.
+    ErrorDetail:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Информация об ошибке.
+        code:
+          type: integer
+          description: Код ошибки.
+      required:
+        - message
+    UnauthorizedError:
+      type: object
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+      required:
+        - error
+      description: Схема ответа для ошибки неавторизованного запроса.
+    NotFoundError:
+      type: object
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+      required:
+        - error
+      description: Схема ответа для ошибки, когда ресурс не найден.
+    UnprocessableEntityError:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+      description: Схема ответа для запроса с необрабатываемым экземпляром из-за ошибок валидации.
+    HealthStatus:
+      type: object
+      properties:
+        version:
+          type: string
+          title: Версия
+          description: Версия API сервиса.
+          examples:
+            - "1.0.0"
+        status:
+          type: string
+          title: Статус
+          description: Общий статус здоровья API.
+          examples:
+            - "OK"
+        redis_status:
+          type: boolean
+          title: Статус Redis
+          description: Статус подключения к Redis.
+        postgres_status:
+          type: boolean
+          title: Статус Postgres
+          description: Статус подключения к базе данных Postgres.
+        clickhouse_status:
+          type: boolean
+          title: Статус ClickHouse
+          description: Статус подключения к ClickHouse.
+        kafka_status:
+          type: boolean
+          title: Статус Kafka
+          description: Статус подключения к Kafka.
+        additional_services:
+          type: object
+          additionalProperties:
+            type: boolean
+          title: Статус дополнительных сервисов
+          description: "Статус дополнительных сервисов, динамически включаемых по мере необходимости."
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
